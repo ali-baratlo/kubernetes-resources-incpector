@@ -318,14 +318,14 @@ function App() {
 
   return (
     <div className="container">
-      <h1>Odin (OKD Resource Inspector)</h1>
+      <h1>Kubernetes Resources Inspector</h1>
       <SearchForm onSearch={handleSearch} loading={loading} filters={filters} />
       {error && <p className="error-message">{error}</p>}
       <Results results={results} keyword={searchKeyword} hasSearched={hasSearched} clusterConfigs={clusterConfigs} />
       <footer className="footer">
         Powered by SRE |
-        <a href="https://gitlab.snapp.ir/sre" target="_blank" rel="noopener noreferrer"> GitLab</a> |
-        <a href="https://confluence.snapp.ir/x/GAQLBQ" target="_blank" rel="noopener noreferrer"> Confluence</a>
+        <a href="https://gitlab.****/sre" target="_blank" rel="noopener noreferrer"> GitLab</a> |
+        <a href="https://confluence.****/*/*" target="_blank" rel="noopener noreferrer"> Confluence</a>
       </footer>
     </div>
   );
