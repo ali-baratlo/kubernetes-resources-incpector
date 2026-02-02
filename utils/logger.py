@@ -9,7 +9,5 @@ logger.add(
     level="INFO"
 )
 
-# You can also configure a file logger if needed
-# logger.add("file.log", rotation="500 MB")
 
 __all__ = ["logger"]

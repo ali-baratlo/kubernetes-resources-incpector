@@ -16,9 +16,9 @@ services:
     image: odin_mongo_app:latest
     container_name: odin_app
     env_file:
-      - .env # Load environment variables from .env file
+      - .env 
     volumes:
-      - ./clusters.yaml:/etc/odin/clusters.yaml:ro # Mount the cluster config as read-only
+      - ./clusters.yaml:/etc/odin/clusters.yaml:ro 
     depends_on:
       - mongo
     ports:

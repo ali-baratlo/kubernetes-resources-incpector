@@ -2,6 +2,8 @@
 
 Odin is a powerful, containerized application designed to collect, store, and inspect Kubernetes resources from multiple clusters. It features a modern React frontend and a robust FastAPI backend, providing an interactive and user-friendly experience for searching and analyzing resource configurations.
 
+![Project Screenshot](image/image_demo.png)
+
 ## Key Features
 
 - **Modern React Frontend**: A fast, responsive, and intuitive user interface built with React and Vite.
@@ -11,7 +13,7 @@ Odin is a powerful, containerized application designed to collect, store, and in
 - **Resource Versioning & Auditing**: Tracks changes to resources over time by storing new versions and logging the differences.
 - **RESTful API**: A robust FastAPI-powered API for all data operations.
 - **Configurable Scheduled Data Collection**: A background job runs periodically to keep the resource data up-to-date. The interval is configurable via an environment variable.
-- **Helm and CI/CD Ready**: Comes with a production-ready Helm chart and a complete GitLab CI/CD pipeline for automated deployments.
+- **Helm Ready**: Comes with a production-ready Helm chart .
 - **Robust Logging and Startup**: Features detailed structured logging for easy debugging and a fail-fast mechanism that prevents the app from starting without a valid database connection.
 
 ## Technology Stack
@@ -20,7 +22,6 @@ Odin is a powerful, containerized application designed to collect, store, and in
 - **Backend**: Python 3, FastAPI, Loguru
 - **Database**: MongoDB
 - **Deployment**: Docker, Docker Compose, Helm
-- **CI/CD**: GitLab CI
 
 ---
 

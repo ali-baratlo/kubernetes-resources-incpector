@@ -88,6 +88,4 @@ def present_ingress(data: dict) -> dict:
 
 def present_configmap(data: dict) -> dict:
     """Presents a summary of a ConfigMap."""
-    # This is already handled by the special view in the template,
-    # but we can return it here for consistency.
     return data.get("data", {})

@@ -32,19 +32,12 @@ async def lifespan(app: FastAPI):
     logger.info("Application shutting down...")
 
 app = FastAPI(
-    title="Odin - OKD Resource Collector and Inspector",
+    title="inspect in your cluster",
     description="A tool to collect, inspect, and compare Kubernetes resources from multiple clusters.",
-    version="2.0.0",
+    version="1.0.0",
     lifespan=lifespan
 )
 
-# Add Prometheus metrics endpoint
-metrics_app = make_asgi_app()
-app.mount("/metrics", metrics_app)
-
-@app.get("/metrics", include_in_schema=False)
-async def metrics_redirect():
-    return RedirectResponse(url="/metrics/")
 
 app.include_router(endpoints.router)
 

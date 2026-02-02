@@ -8,7 +8,6 @@ from models.resource import Resource, AuditLog
 from jsondiff import diff
 import urllib3
 
-# A comprehensive list of resources to collect.
 # `namespaced=True` for resources within a namespace.
 # `namespaced=False` for cluster-wide resources.
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
