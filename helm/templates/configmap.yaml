@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "odin.fullname" . }}-clusters
+  labels:
+    {{- include "odin.labels" . | nindent 4 }}
+data:
+  clusters.yaml: |
+    {{- .Values.clustersConfig | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "odin.fullname" . }}-config
+  labels:
+    {{- include "odin.labels" . | nindent 4 }}
+data:
+  SCHEDULER_INTERVAL_HOURS: {{ .Values.env.SCHEDULER_INTERVAL_HOURS | quote }}
+  # Add other non-sensitive environment variables here if needed

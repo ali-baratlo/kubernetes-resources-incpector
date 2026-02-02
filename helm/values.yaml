@@ -1,0 +1,81 @@
+# Default values for odin chart.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: your-repo/odin # CHANGE_ME
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 8000
+
+# The content of your clusters.yaml file.
+# This will be mounted as a ConfigMap.
+clustersConfig: |
+  - name: my-cluster-1
+    api_server: https://api.my-cluster-1.com:6443
+    token_env: MY_CLUSTER_1_TOKEN
+    fqdn_env: MY_CLUSTER_1_FQDN
+    namespace_label_selector: "environment=production"
+
+# Environment variables to be set in the container.
+# The values are expected to be provided via secrets or other means.
+env:
+  # Add tokens for each cluster defined in `clustersConfig`
+  # For example:
+  # MY_CLUSTER_1_TOKEN: "your-token"
+  tokens: {}
+
+  # Add FQDNs for each cluster defined in `clustersConfig`
+  # For example:
+  # MY_CLUSTER_1_FQDN: "console.apps.my-cluster-1.com"
+  fqdns: {}
+
+  # Optional: Scheduler interval in hours
+  SCHEDULER_INTERVAL_HOURS: "1"
+
+# We will create a secret from the `env.tokens` and `env.fqdns` maps.
+# The name of the secret can be customized here.
+secrets:
+  # The name of the k8s secret that will hold the env vars
+  name: odin-env-secrets
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

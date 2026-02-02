@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:latest
+    container_name: odin_mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./data/mongo:/data/db
+    networks:
+      - odin_net
+
+  web:
+    image: odin_mongo_app:latest
+    container_name: odin_app
+    env_file:
+      - .env # Load environment variables from .env file
+    volumes:
+      - ./clusters.yaml:/etc/odin/clusters.yaml:ro # Mount the cluster config as read-only
+    depends_on:
+      - mongo
+    ports:
+      - "8000:8000"
+    networks:
+      - odin_net
+
+networks:
+  odin_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
