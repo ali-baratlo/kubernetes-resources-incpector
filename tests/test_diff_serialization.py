@@ -1,52 +1,78 @@
 import json
 from jsondiff import diff
 
-def test_diff_serialization_with_marshal():
+def test_diff_serialization_with_marshal_and_json_dumps():
     """
-    Test that jsondiff with marshal=True produces a JSON-serializable output
-    even when there are changes that would normally result in Symbol keys.
+    Test that jsondiff with marshal=True and json.loads(json.dumps(...))
+    produces a JSON-serializable output with only string keys,
+    even for nested list changes.
     """
     obj1 = {
-        "metadata": {"name": "test-pod", "labels": {"app": "old-app"}},
-        "spec": {"containers": [{"image": "old-image"}]}
+        "spec": {
+            "containers": [
+                {"name": "c1", "image": "i1"},
+                {"name": "c2", "image": "i2"}
+            ]
+        }
     }
 
     obj2 = {
-        "metadata": {"name": "test-pod", "labels": {"app": "new-app", "env": "prod"}},
-        "spec": {"containers": [{"image": "new-image"}]}
+        "spec": {
+            "containers": [
+                {"name": "c1", "image": "i1"},
+                {"name": "c2", "image": "i3"}
+            ]
+        }
     }
 
-    # This kind of change (addition of 'env' label, and multiple updates)
-    # often triggers the use of symbols in jsondiff with symmetric syntax.
-
+    # This change in a nested list produces integer keys in the diff
     difference = diff(obj1, obj2, syntax='symmetric', marshal=True)
 
-    # If this fails, the fix is not working
-    try:
-        json_str = json.dumps(difference)
-        print(f"Serialized diff: {json_str}")
-    except TypeError as e:
-        assert False, f"JSON serialization failed: {e}"
+    # Verify that it contains integer keys (which would fail MongoDB insert)
+    has_int_key = False
+    def check_keys(d):
+        nonlocal has_int_key
+        if isinstance(d, dict):
+            for k, v in d.items():
+                if isinstance(k, int):
+                    has_int_key = True
+                check_keys(v)
+        elif isinstance(d, (list, tuple)):
+            for item in d:
+                check_keys(item)
 
-    # Verify that the marshaled diff contains the expected string keys instead of symbols
-    assert "$insert" in str(difference) or "$update" in str(difference) or "$delete" in str(difference) or any(isinstance(k, str) and k.startswith('$') for k in difference.keys())
+    check_keys(difference)
+    assert has_int_key, "Should have integer keys for nested list changes"
 
-    # A more specific check for the produced structure
-    # With symmetric syntax and marshal=True, it should look like this:
-    # {'metadata': {'labels': {'env': 'prod', '$insert': {'env': 'prod'}, 'app': 'new-app'}}, ...}
-    # Wait, actually it might vary, but the keys must be strings.
-    for key in difference.keys():
-        assert isinstance(key, str), f"Key {key} is not a string, it is {type(key)}"
+    # Now apply the fix
+    serializable_diff = json.loads(json.dumps(difference))
 
-def test_diff_serialization_failure_without_marshal():
+    # Verify all keys are now strings
+    def check_keys_are_strings(d):
+        if isinstance(d, dict):
+            for k, v in d.items():
+                assert isinstance(k, str), f"Key {k} is not a string, it is {type(k)}"
+                check_keys_are_strings(v)
+        elif isinstance(d, (list, tuple)):
+            for item in d:
+                check_keys_are_strings(item)
+
+    check_keys_are_strings(serializable_diff)
+
+    # Final check: serializable by standard json
+    json_str = json.dumps(serializable_diff)
+    assert '"1"' in json_str, "Integer key should be converted to string key"
+
+def test_diff_serialization_with_symbols():
     """
-    Verify that without marshal=True, it indeed fails to serialize (sanity check).
+    Verify that marshal=True handles symbols correctly.
     """
     obj1 = {'a': 1, 'b': 2}
     obj2 = {'a': 1, 'c': 3}
 
-    difference = diff(obj1, obj2, syntax='symmetric')
+    difference = diff(obj1, obj2, syntax='symmetric', marshal=True)
+    serializable_diff = json.loads(json.dumps(difference))
 
-    import pytest
-    with pytest.raises(TypeError, match="keys must be str, int, float, bool or None, not Symbol"):
-        json.dumps(difference)
+    assert "$insert" in serializable_diff or "$delete" in serializable_diff
+    for k in serializable_diff.keys():
+        assert isinstance(k, str)

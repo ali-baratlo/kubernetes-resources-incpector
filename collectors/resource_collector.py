@@ -51,7 +51,8 @@ def _process_and_store_resources(items, cluster_name, resource_type, namespace, 
 
         if existing_resource:
             if existing_resource["resource_version"] != item.metadata.resource_version:
-                serializable_diff = diff(existing_resource["data"], resource_dict, syntax='symmetric', marshal=True)
+                difference = diff(existing_resource["data"], resource_dict, syntax='symmetric', marshal=True)
+                serializable_diff = json.loads(json.dumps(difference))
                 audit_log = AuditLog(
                     resource_id=str(existing_resource["_id"]),
                     old_version=existing_resource["resource_version"],

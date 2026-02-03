@@ -19,6 +19,7 @@ resources_to_insert = [
         "resource_type": "ConfigMap",
         "resource_name": "my-configmap",
         "resource_version": "1",
+        "environment": "non-production",
         "data": {"key": "value"},
     },
     {
@@ -28,6 +29,7 @@ resources_to_insert = [
         "resource_type": "Secret",
         "resource_name": "my-secret",
         "resource_version": "2",
+        "environment": "non-production",
         "data": {"user": "YWRtaW4="},
     },
     {
@@ -37,6 +39,7 @@ resources_to_insert = [
         "resource_type": "Deployment",
         "resource_name": "my-deployment",
         "resource_version": "3",
+        "environment": "production",
         "data": {"replicas": 3},
     },
 ]
