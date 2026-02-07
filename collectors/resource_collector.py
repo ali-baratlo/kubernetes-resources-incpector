@@ -38,6 +38,8 @@ def _process_and_store_resources(items, cluster_name, resource_type, namespace, 
     for item in items:
         resource_dict = api_client.sanitize_for_serialization(item)
         full_resource_str = json.dumps(resource_dict)
+        # Ensure resource_dict has only string keys for MongoDB compatibility
+        resource_dict = json.loads(full_resource_str)
 
         query = {
             "cluster_name": cluster_name,
