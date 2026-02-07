@@ -12,6 +12,17 @@ import urllib3
 # `namespaced=False` for cluster-wide resources.
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+def wash_keys(obj):
+    """
+    Recursively ensures all dictionary keys are strings and converts tuples to lists.
+    This is necessary for MongoDB compatibility.
+    """
+    if isinstance(obj, dict):
+        return {str(k): wash_keys(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [wash_keys(i) for i in obj]
+    return obj
+
 RESOURCE_TYPES = [
     #{"name": "Pod", "list_func": "list_namespaced_pod", "api": "CoreV1Api", "namespaced": True},
     {"name": "ConfigMap", "list_func": "list_namespaced_config_map", "api": "CoreV1Api", "namespaced": True},
@@ -38,6 +49,8 @@ def _process_and_store_resources(items, cluster_name, resource_type, namespace, 
     for item in items:
         resource_dict = api_client.sanitize_for_serialization(item)
         full_resource_str = json.dumps(resource_dict)
+        # Ensure resource_dict has only string keys for MongoDB compatibility
+        resource_dict = wash_keys(resource_dict)
 
         query = {
             "cluster_name": cluster_name,
@@ -51,24 +64,25 @@ def _process_and_store_resources(items, cluster_name, resource_type, namespace, 
 
         if existing_resource:
             if existing_resource["resource_version"] != item.metadata.resource_version:
-                serializable_diff = diff(existing_resource["data"], resource_dict, syntax='symmetric', marshal=True)
+                difference = diff(existing_resource["data"], resource_dict, syntax='symmetric', marshal=True)
+                serializable_diff = wash_keys(difference)
                 audit_log = AuditLog(
                     resource_id=str(existing_resource["_id"]),
                     old_version=existing_resource["resource_version"],
                     new_version=item.metadata.resource_version,
                     diff=serializable_diff,
                 )
-                audit_collection.insert_one(audit_log.model_dump())
+                audit_collection.insert_one(wash_keys(audit_log.model_dump()))
 
                 collection.update_one(
                     {"_id": existing_resource["_id"]},
-                    {"$set": {
+                    {"$set": wash_keys({
                         "resource_version": item.metadata.resource_version,
                         "data": resource_dict,
                         "full_resource_string": full_resource_str,
                         "created_at": audit_log.changed_at,
                         "environment": environment
-                    }}
+                    })}
                 )
                 logger.info(f"Updated {resource_type} '{item.metadata.name}'" + (f" in '{namespace}'" if namespace else ""))
         else:
@@ -82,7 +96,7 @@ def _process_and_store_resources(items, cluster_name, resource_type, namespace, 
                 data=resource_dict,
                 full_resource_string=full_resource_str,
             )
-            collection.insert_one(new_resource.model_dump())
+            collection.insert_one(wash_keys(new_resource.model_dump()))
             logger.info(f"Inserted new {resource_type} '{item.metadata.name}'" + (f" in '{namespace}'" if namespace else ""))
 
 def collect_resources():

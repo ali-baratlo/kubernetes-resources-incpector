@@ -1,52 +1,97 @@
 import json
 from jsondiff import diff
+from collectors.resource_collector import wash_keys
+import mongomock
+from datetime import datetime
 
-def test_diff_serialization_with_marshal():
+def test_wash_keys():
     """
-    Test that jsondiff with marshal=True produces a JSON-serializable output
-    even when there are changes that would normally result in Symbol keys.
+    Test that wash_keys recursively ensures all dictionary keys are strings
+    and converts tuples to lists, while preserving other types like datetime.
+    """
+    now = datetime.utcnow()
+    d = {
+        1: "a",
+        "b": (2, 3),
+        "c": {"d": {4: "e"}},
+        "e": now
+    }
+    washed = wash_keys(d)
+
+    # Check keys
+    assert "1" in washed
+    assert 1 not in washed
+    assert isinstance(list(washed.keys())[0], str)
+
+    # Check nested keys
+    assert "4" in washed["c"]["d"]
+    assert 4 not in washed["c"]["d"]
+
+    # Check tuples to lists
+    assert washed["b"] == [2, 3]
+    assert isinstance(washed["b"], list)
+
+    # Check datetime preservation
+    assert washed["e"] == now
+    assert isinstance(washed["e"], datetime)
+
+def test_mongo_insertion_with_washed_keys():
+    """
+    Verify that a dictionary washed with wash_keys can be inserted into MongoDB.
+    """
+    client = mongomock.MongoClient()
+    db = client.testdb
+    coll = db.testcoll
+
+    d = {1: "a", "nested": {2: "b"}}
+    washed = wash_keys(d)
+
+    # Should not raise any error
+    coll.insert_one(washed)
+
+    inserted = coll.find_one({"1": "a"})
+    assert inserted is not None
+    assert inserted["nested"]["2"] == "b"
+
+def test_diff_serialization_with_wash_keys():
+    """
+    Test that wash_keys correctly handles output from jsondiff.
     """
     obj1 = {
-        "metadata": {"name": "test-pod", "labels": {"app": "old-app"}},
-        "spec": {"containers": [{"image": "old-image"}]}
+        "spec": {
+            "containers": [
+                {"name": "c1", "image": "i1"},
+                {"name": "c2", "image": "i2"}
+            ]
+        }
     }
 
     obj2 = {
-        "metadata": {"name": "test-pod", "labels": {"app": "new-app", "env": "prod"}},
-        "spec": {"containers": [{"image": "new-image"}]}
+        "spec": {
+            "containers": [
+                {"name": "c1", "image": "i1"},
+                {"name": "c2", "image": "i3"}
+            ]
+        }
     }
 
-    # This kind of change (addition of 'env' label, and multiple updates)
-    # often triggers the use of symbols in jsondiff with symmetric syntax.
-
     difference = diff(obj1, obj2, syntax='symmetric', marshal=True)
+    # This difference contains integer keys (index 1) and potentially tuples
 
-    # If this fails, the fix is not working
-    try:
-        json_str = json.dumps(difference)
-        print(f"Serialized diff: {json_str}")
-    except TypeError as e:
-        assert False, f"JSON serialization failed: {e}"
+    washed_diff = wash_keys(difference)
 
-    # Verify that the marshaled diff contains the expected string keys instead of symbols
-    assert "$insert" in str(difference) or "$update" in str(difference) or "$delete" in str(difference) or any(isinstance(k, str) and k.startswith('$') for k in difference.keys())
+    # Verify all keys are strings
+    def check_keys_are_strings(obj):
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                assert isinstance(k, str), f"Key {k} is not a string, it is {type(k)}"
+                check_keys_are_strings(v)
+        elif isinstance(obj, list):
+            for item in obj:
+                check_keys_are_strings(item)
 
-    # A more specific check for the produced structure
-    # With symmetric syntax and marshal=True, it should look like this:
-    # {'metadata': {'labels': {'env': 'prod', '$insert': {'env': 'prod'}, 'app': 'new-app'}}, ...}
-    # Wait, actually it might vary, but the keys must be strings.
-    for key in difference.keys():
-        assert isinstance(key, str), f"Key {key} is not a string, it is {type(key)}"
+    check_keys_are_strings(washed_diff)
 
-def test_diff_serialization_failure_without_marshal():
-    """
-    Verify that without marshal=True, it indeed fails to serialize (sanity check).
-    """
-    obj1 = {'a': 1, 'b': 2}
-    obj2 = {'a': 1, 'c': 3}
-
-    difference = diff(obj1, obj2, syntax='symmetric')
-
-    import pytest
-    with pytest.raises(TypeError, match="keys must be str, int, float, bool or None, not Symbol"):
-        json.dumps(difference)
+    # Verify we can dump it to JSON
+    json_str = json.dumps(washed_diff)
+    assert '"1"' in json_str
